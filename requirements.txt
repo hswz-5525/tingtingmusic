@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+mutagen
+python-dotenv
+python-multipart
+pydantic
+pydantic-settings
+jinja2

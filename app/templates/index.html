@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>听听音乐</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>听听音乐</h1>
+            <div class="header-actions">
+                <button id="select-folder-btn" class="folder-btn">📁 选择音乐文件夹</button>
+                <button id="settings-btn" class="settings-btn">⚙️</button>
+            </div>
+        </header>
+        
+        <!-- 设置面板 -->
+        <div id="settings-panel" class="settings-panel">
+            <div class="settings-header">
+                <h2>设置</h2>
+                <button id="close-settings-btn" class="close-settings-btn">✕</button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h3>播放设置</h3>
+                    <div class="setting-item">
+                        <label for="default-play-mode">默认播放模式</label>
+                        <select id="default-play-mode">
+                            <option value="0">顺序播放</option>
+                            <option value="1">单曲循环</option>
+                            <option value="2" selected>列表循环</option>
+                            <option value="3">随机播放</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="default-volume">默认音量</label>
+                        <input type="range" id="default-volume" min="0" max="100" value="70">
+                        <span class="setting-value" id="volume-value">70%</span>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>显示设置</h3>
+                    <div class="setting-item">
+                        <label for="show-artist">显示艺术家</label>
+                        <select id="show-artist">
+                            <option value="true" selected>是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="show-album">显示专辑</label>
+                        <select id="show-album">
+                            <option value="true" selected>是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 遮罩层 -->
+        <div id="overlay" class="overlay"></div>
+        
+        <div class="main-layout">
+            <!-- 左侧播放列表 -->
+            <aside class="sidebar">
+                <section class="playlist-section">
+                    <div class="playlist-header">
+                        <h2>播放列表</h2>
+                        <button id="add-playlist-btn" class="add-btn">+ 新建</button>
+                    </div>
+                    
+                    <div class="playlists-list" id="playlists-list">
+                        <!-- 播放列表将通过JavaScript动态生成 -->
+                    </div>
+                </section>
+            </aside>
+            
+            <!-- 右侧主内容 -->
+            <main class="main-content">
+                <section class="player-section">
+                    <div class="album-cover">
+                        <img id="cover-image" src="/static/default-cover.png" alt="专辑封面">
+                    </div>
+                    
+                    <div class="track-info">
+                        <h2 id="track-title">未播放</h2>
+                        <p id="track-artist">-</p>
+                    </div>
+                    
+                    <div class="progress-bar">
+                        <div class="progress" id="progress"></div>
+                        <div class="time-info">
+                            <span id="current-time">0:00</span>
+                            <span id="total-time">0:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="controls">
+                        <button id="prev-btn" class="control-btn">
+                            <span>⏮️</span>
+                        </button>
+                        <button id="play-btn" class="control-btn play-btn">
+                            <span>▶️</span>
+                        </button>
+                        <button id="next-btn" class="control-btn">
+                            <span>⏭️</span>
+                        </button>
+                        <button id="play-mode-btn" class="control-btn" title="播放模式">
+                            <span id="play-mode-icon">🔄</span>
+                        </button>
+                    </div>
+                    
+                    <div class="volume-control">
+                        <span>🔊</span>
+                        <input type="range" id="volume" min="0" max="1" step="0.01" value="0.7">
+                    </div>
+                    
+                    <!-- 歌词显示区域 -->
+                    <div class="lyrics-section">
+                        <div id="lyrics" class="lyrics"></div>
+                    </div>
+                </section>
+                
+                <section class="tracks-section">
+                    <h2 id="current-list-title">音乐列表</h2>
+                    <div class="tracks-list" id="tracks-list">
+                        <!-- 音乐列表将通过JavaScript动态生成 -->
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>

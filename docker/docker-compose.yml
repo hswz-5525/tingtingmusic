@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  tingting-music:
+    build: ..
+    container_name: tingting-music
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./music:/app/musics
+      - ./data:/app/data
+    environment:
+      - MUSIC_DIR=./musics
+      - DATABASE_URL=sqlite:///./data/music.db
+    restart: unless-stopped
