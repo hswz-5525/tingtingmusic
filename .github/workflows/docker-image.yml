@@ -5,7 +5,11 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-
+env:
+  # 设置 Docker Hub 仓库名称
+  DOCKER_HUB_REPO: hswz/tingtingmusic
+  # 设置版本号
+  VERSION: latest
 jobs:
 
   build:
