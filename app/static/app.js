@@ -21,37 +21,38 @@ class MusicPlayer {
             nextBtn: document.getElementById('next-btn'),
             playModeBtn: document.getElementById('play-mode-btn'),
             playModeIcon: document.getElementById('play-mode-icon'),
-            selectFolderBtn: document.getElementById('select-folder-btn'),
-            settingsBtn: document.getElementById('settings-btn'),
-            closeSettingsBtn: document.getElementById('close-settings-btn'),
-            settingsPanel: document.getElementById('settings-panel'),
-            overlay: document.getElementById('overlay'),
-            defaultPlayMode: document.getElementById('default-play-mode'),
-            defaultVolume: document.getElementById('default-volume'),
-            volumeValue: document.getElementById('volume-value'),
             progress: document.querySelector('.progress'),
             currentTime: document.getElementById('current-time'),
             totalTime: document.getElementById('total-time'),
             trackTitle: document.getElementById('track-title'),
             trackArtist: document.getElementById('track-artist'),
             volume: document.getElementById('volume'),
-            tracksList: document.getElementById('tracks-list'),
             playlistsList: document.getElementById('playlists-list'),
             addPlaylistBtn: document.getElementById('add-playlist-btn'),
+            lyrics: document.getElementById('lyrics'),
+            tracksList: document.getElementById('tracks-list'),
             currentListTitle: document.getElementById('current-list-title'),
-            lyrics: document.getElementById('lyrics')
+            equalizerBtn: document.getElementById('equalizer-btn'),
+            equalizerMenu: document.getElementById('equalizer-menu'),
+            themeToggleBtn: document.getElementById('theme-toggle-btn')
         };
         
         // 播放列表展开状态
         this.expandedPlaylists = new Set();
         
-        // 加载设置
-        this.loadSettings();
+        // 音效设置
+        this.currentEffect = '原声';
+        
+        // 主题设置
+        this.isDarkTheme = true;
         
         this.init();
     }
     
     async init() {
+        // 加载设置
+        this.loadSettings();
+        
         // 加载音乐列表和播放列表
         await Promise.all([
             this.loadTracks(),
@@ -66,12 +67,48 @@ class MusicPlayer {
         
         // 设置初始播放模式图标
         this.updatePlayModeIcon();
+        
+        // 加载主题设置
+        this.loadThemeSetting();
+    }
+    
+    // 加载设置
+    loadSettings() {
+        const settings = JSON.parse(localStorage.getItem('tingting-music-settings') || '{}');
+        
+        // 应用设置
+        if (settings.defaultPlayMode !== undefined) {
+            this.playMode = settings.defaultPlayMode;
+        }
+        
+        if (settings.defaultVolume !== undefined) {
+            const volume = settings.defaultVolume / 100;
+            this.audio.volume = volume;
+            this.elements.volume.value = volume;
+        }
+        
+        // 保存设置到实例中
+        this.settings = {
+            showArtist: settings.showArtist !== undefined ? settings.showArtist : 'true',
+            showAlbum: settings.showAlbum !== undefined ? settings.showAlbum : 'true',
+            showFilename: settings.showFilename !== undefined ? settings.showFilename : 'true',
+            showBitrate: settings.showBitrate !== undefined ? settings.showBitrate : 'true',
+            showSampleRate: settings.showSampleRate !== undefined ? settings.showSampleRate : 'true',
+            showFileType: settings.showFileType !== undefined ? settings.showFileType : 'true'
+        };
     }
     
     async loadTracks() {
         try {
             const response = await fetch('/api/tracks');
             this.tracks = await response.json();
+            // 更新当前列表标题
+            const allMusicPlaylist = this.playlists.find(pl => pl.type === 'all');
+            if (allMusicPlaylist) {
+                this.elements.currentListTitle.textContent = allMusicPlaylist.name;
+            } else {
+                this.elements.currentListTitle.textContent = '全部音乐';
+            }
             this.renderTracks();
         } catch (error) {
             console.error('加载音乐列表失败:', error);
@@ -82,6 +119,7 @@ class MusicPlayer {
         try {
             const response = await fetch('/api/playlists');
             this.playlists = await response.json();
+            console.log('加载到的播放列表数据:', this.playlists);
             this.renderPlaylists();
         } catch (error) {
             console.error('加载播放列表失败:', error);
@@ -89,89 +127,98 @@ class MusicPlayer {
     }
     
     renderTracks() {
+        // 清空容器
         this.elements.tracksList.innerHTML = '';
         
+        // 渲染歌曲列表
         this.tracks.forEach((track, index) => {
             const trackItem = document.createElement('div');
-            trackItem.className = 'track-item';
+            trackItem.className = `track-item ${this.currentTrackIndex === index ? 'active' : ''}`;
             trackItem.dataset.index = index;
-            
-            const duration = this.formatTime(track.duration);
             
             // 获取文件名
             const fileName = track.file_path.split('/').pop().split('\\').pop();
             const fileNameWithoutExt = fileName.split('.').slice(0, -1).join('.');
             
-            // 显示格式：歌曲名-歌手（文件名）
-            const displayName = `${track.title} - ${track.artist ? track.artist.name : '未知艺术家'}`;
-            const fullDisplayName = `${displayName} (${fileNameWithoutExt})`;
+            // 构建显示信息
+            let displayName = track.title;
+            let details = [];
+            
+            // 根据设置添加艺术家
+            if (this.settings.showArtist === 'true' && track.artist) {
+                displayName += ` - ${track.artist.name}`;
+            }
+            
+            // 根据设置添加专辑名
+            if (this.settings.showAlbum === 'true' && track.album) {
+                details.push(`专辑: ${track.album.title}`);
+            }
+            
+            // 根据设置添加文件名
+            if (this.settings.showFilename === 'true') {
+                details.push(`文件名: ${fileNameWithoutExt}`);
+            }
+            
+            // 根据设置添加编码率
+            if (this.settings.showBitrate === 'true' && track.bitrate) {
+                details.push(`${Math.round(track.bitrate / 1000)}kbps`);
+            }
+            
+            // 根据设置添加采样率
+            if (this.settings.showSampleRate === 'true' && track.sample_rate) {
+                details.push(`${Math.round(track.sample_rate / 1000)}kHz`);
+            }
+            
+            // 根据设置添加文件格式
+            if (this.settings.showFileType === 'true') {
+                details.push(`${track.file_type.toUpperCase()}`);
+            }
+            
+            const trackDetails = details.length > 0 ? details.join(' · ') : '';
             
             trackItem.innerHTML = `
                 <div class="track-number">${index + 1}</div>
                 <div class="track-details">
                     <h3>${displayName}</h3>
-                    <p class="file-name">${fileNameWithoutExt}</p>
+                    ${trackDetails ? `<div class="track-info">${trackDetails}</div>` : ''}
                 </div>
-                <div class="track-duration">${duration}</div>
+                <div class="track-duration">${this.formatTime(track.duration)}</div>
             `;
             
+            // 绑定点击事件
             trackItem.addEventListener('click', () => this.playTrack(index));
+            
             this.elements.tracksList.appendChild(trackItem);
         });
     }
     
     renderPlaylists() {
+        console.log('渲染播放列表，当前播放列表数据:', this.playlists);
         this.elements.playlistsList.innerHTML = '';
-        
-        // 添加"全部音乐"选项
-        const allMusicItem = document.createElement('div');
-        allMusicItem.className = 'playlist-item active';
-        allMusicItem.dataset.id = 'all';
-        allMusicItem.innerHTML = `
-            <div class="playlist-name">全部音乐</div>
-            <div class="playlist-actions">
-                <button class="expand-btn" title="展开/收起">▼</button>
-            </div>
-        `;
-        
-        // 添加二级菜单容器
-        const allMusicTracks = document.createElement('div');
-        allMusicTracks.className = 'playlist-tracks';
-        allMusicTracks.style.display = 'none';
-        
-        // 绑定点击事件
-        allMusicItem.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('expand-btn')) {
-                this.selectPlaylist('all');
-            }
-        });
-        
-        // 绑定展开/收起事件
-        const allExpandBtn = allMusicItem.querySelector('.expand-btn');
-        allExpandBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.togglePlaylistTracks(allMusicTracks, allExpandBtn);
-        });
-        
-        this.elements.playlistsList.appendChild(allMusicItem);
-        this.elements.playlistsList.appendChild(allMusicTracks);
         
         // 分离默认播放列表和自定义播放列表
         const defaultPlaylists = this.playlists.filter(pl => pl.type !== 'custom');
         const customPlaylists = this.playlists.filter(pl => pl.type === 'custom');
         
-        // 添加默认播放列表
-        defaultPlaylists.forEach(playlist => {
-            this.renderPlaylistItem(playlist);
+        // 对默认播放列表进行排序：全部音乐 -> 我的收藏 -> 最近播放
+        defaultPlaylists.sort((a, b) => {
+            const order = ['all', 'favorite', 'recent'];
+            return order.indexOf(a.type) - order.indexOf(b.type);
         });
+        
+        // 添加默认播放列表
+        if (defaultPlaylists.length > 0) {
+            defaultPlaylists.forEach(playlist => {
+                this.renderPlaylistItem(playlist);
+            });
+        }
         
         // 添加自定义播放列表
-        customPlaylists.forEach(playlist => {
-            this.renderPlaylistItem(playlist);
-        });
-        
-        // 渲染"全部音乐"的二级菜单
-        this.renderPlaylistTracks('all', allMusicTracks);
+        if (customPlaylists.length > 0) {
+            customPlaylists.forEach(playlist => {
+                this.renderPlaylistItem(playlist);
+            });
+        }
     }
     
     renderPlaylistItem(playlist) {
@@ -185,28 +232,15 @@ class MusicPlayer {
         playlistItem.innerHTML = `
             <div class="playlist-name">${playlist.name}</div>
             <div class="playlist-actions">
-                <button class="expand-btn" title="展开/收起">▼</button>
                 ${actionsHtml}
             </div>
         `;
         
-        // 添加二级菜单容器
-        const tracksContainer = document.createElement('div');
-        tracksContainer.className = 'playlist-tracks';
-        tracksContainer.style.display = 'none';
-        
         // 绑定点击事件
         playlistItem.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('expand-btn') && !e.target.classList.contains('delete-playlist-btn')) {
+            if (!e.target.classList.contains('delete-playlist-btn')) {
                 this.selectPlaylist(playlist.id);
             }
-        });
-        
-        // 绑定展开/收起事件
-        const expandBtn = playlistItem.querySelector('.expand-btn');
-        expandBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.togglePlaylistTracks(tracksContainer, expandBtn);
         });
         
         // 绑定删除事件
@@ -219,10 +253,6 @@ class MusicPlayer {
         }
         
         this.elements.playlistsList.appendChild(playlistItem);
-        this.elements.playlistsList.appendChild(tracksContainer);
-        
-        // 渲染播放列表的二级菜单
-        this.renderPlaylistTracks(playlist.id, tracksContainer);
     }
     
     renderPlaylistTracks(playlistId, container) {
@@ -249,8 +279,33 @@ class MusicPlayer {
             const fileName = track.file_path.split('/').pop().split('\\').pop();
             const fileNameWithoutExt = fileName.split('.').slice(0, -1).join('.');
             
-            // 显示格式：歌曲名-歌手（文件名）
-            const displayName = `${track.title} - ${track.artist ? track.artist.name : '未知艺术家'} (${fileNameWithoutExt})`;
+            // 构建显示信息
+            let displayName = track.title;
+            let details = [];
+            
+            // 根据设置添加艺术家
+            if (this.settings.showArtist === 'true' && track.artist) {
+                displayName += ` - ${track.artist.name}`;
+            }
+            
+            // 根据设置添加文件名
+            if (this.settings.showFilename === 'true') {
+                details.push(`(${fileNameWithoutExt})`);
+            }
+            
+            // 根据设置添加编码率
+            if (this.settings.showBitrate === 'true' && track.bitrate) {
+                details.push(`${Math.round(track.bitrate / 1000)}kbps`);
+            }
+            
+            // 根据设置添加采样率
+            if (this.settings.showSampleRate === 'true' && track.sample_rate) {
+                details.push(`${Math.round(track.sample_rate / 1000)}kHz`);
+            }
+            
+            if (details.length > 0) {
+                displayName += ` ${details.join(' · ')}`;
+            }
             
             trackItem.textContent = displayName;
             trackItem.addEventListener('click', () => this.playTrack(index));
@@ -279,21 +334,6 @@ class MusicPlayer {
         // 播放模式按钮
         this.elements.playModeBtn.addEventListener('click', () => this.togglePlayMode());
         
-        // 选择文件夹按钮
-        this.elements.selectFolderBtn.addEventListener('click', () => this.selectMusicFolder());
-        
-        // 设置按钮
-        this.elements.settingsBtn.addEventListener('click', () => this.openSettings());
-        this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettings());
-        this.elements.overlay.addEventListener('click', () => this.closeSettings());
-        
-        // 设置面板事件
-        this.elements.defaultPlayMode.addEventListener('change', () => this.saveSettings());
-        this.elements.defaultVolume.addEventListener('input', (e) => {
-            this.elements.volumeValue.textContent = e.target.value + '%';
-            this.saveSettings();
-        });
-        
         // 进度条点击
         this.elements.progress.addEventListener('click', (e) => this.seek(e));
         
@@ -314,106 +354,51 @@ class MusicPlayer {
         
         // 播放列表事件
         this.elements.addPlaylistBtn.addEventListener('click', () => this.createPlaylist());
-    }
-    
-    // 设置功能
-    loadSettings() {
-        const settings = JSON.parse(localStorage.getItem('tingting-music-settings') || '{}');
         
-        // 应用设置
-        if (settings.defaultPlayMode !== undefined) {
-            this.playMode = settings.defaultPlayMode;
-            this.elements.defaultPlayMode.value = settings.defaultPlayMode;
-        }
+        // 音效控制事件
+        this.elements.equalizerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleEqualizerMenu();
+        });
         
-        if (settings.defaultVolume !== undefined) {
-            const volume = settings.defaultVolume / 100;
-            this.audio.volume = volume;
-            this.elements.volume.value = volume;
-            this.elements.defaultVolume.value = settings.defaultVolume;
-            this.elements.volumeValue.textContent = settings.defaultVolume + '%';
-        }
+        // 音效菜单项点击事件
+        document.querySelectorAll('.equalizer-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const effect = e.currentTarget.dataset.effect;
+                this.selectEffect(effect);
+            });
+        });
         
-        this.updatePlayModeIcon();
-    }
-    
-    saveSettings() {
-        const settings = {
-            defaultPlayMode: parseInt(this.elements.defaultPlayMode.value),
-            defaultVolume: parseInt(this.elements.defaultVolume.value)
-        };
-        localStorage.setItem('tingting-music-settings', JSON.stringify(settings));
-    }
-    
-    openSettings() {
-        this.elements.settingsPanel.classList.add('open');
-        this.elements.overlay.classList.add('show');
-    }
-    
-    closeSettings() {
-        this.elements.settingsPanel.classList.remove('open');
-        this.elements.overlay.classList.remove('show');
+        // 点击页面其他地方关闭音效菜单
+        document.addEventListener('click', () => {
+            this.elements.equalizerMenu.classList.remove('show');
+        });
+        
+        // 阻止菜单内部点击事件冒泡
+        this.elements.equalizerMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        // 主题切换事件
+        this.elements.themeToggleBtn.addEventListener('click', () => {
+            this.toggleTheme();
+        });
     }
     
     // 切换播放模式
     togglePlayMode() {
         this.playMode = (this.playMode + 1) % 4;
         this.updatePlayModeIcon();
+        
+        // 更新按钮title
+        const modeTitles = ['顺序播放', '单曲循环', '列表循环', '随机播放'];
+        this.elements.playModeBtn.title = `当前: ${modeTitles[this.playMode]}`;
     }
     
     // 更新播放模式图标
     updatePlayModeIcon() {
         this.elements.playModeIcon.textContent = this.playModeIcons[this.playMode];
-    }
-    
-    // 选择音乐文件夹
-    async selectMusicFolder() {
-        // 这里只是一个示例，实际实现需要后端支持文件夹选择
-        const folderPath = prompt('请输入音乐文件夹路径:');
-        if (!folderPath || folderPath.trim() === '') return;
-        
-        try {
-            // 调用API更新音乐文件夹
-            const response = await fetch('/api/scan', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ music_dir: folderPath.trim() })
-            });
-            
-            if (response.ok) {
-                alert('音乐文件夹已更新，正在重新扫描...');
-                // 重新加载音乐列表
-                await this.loadTracks();
-            }
-        } catch (error) {
-            console.error('更新音乐文件夹失败:', error);
-            alert('更新音乐文件夹失败');
-        }
-    }
-    
-    async playTrack(index) {
-        if (index < 0 || index >= this.tracks.length) return;
-        
-        this.currentTrackIndex = index;
-        const track = this.tracks[index];
-        
-        // 更新UI
-        this.updateTrackInfo(track);
-        this.updateActiveTrack();
-        
-        // 更新专辑封面
-        this.updateAlbumCover(track.id);
-        
-        // 加载歌词
-        await this.loadLyrics(track.id);
-        
-        // 设置音频源
-        this.audio.src = `/api/tracks/${track.id}/stream`;
-        this.audio.play();
-        this.isPlaying = true;
-        this.updatePlayButton();
     }
     
     togglePlay() {
@@ -423,11 +408,77 @@ class MusicPlayer {
         } else if (this.isPlaying) {
             this.audio.pause();
             this.isPlaying = false;
+            this.updateCDRotation();
         } else {
             this.audio.play();
             this.isPlaying = true;
+            this.updateCDRotation();
         }
         this.updatePlayButton();
+    }
+    
+    async playTrack(index) {
+        if (index < 0 || index >= this.tracks.length) return;
+        
+        this.currentTrackIndex = index;
+        const track = this.tracks[index];
+        
+        // 暂停当前播放
+        if (this.isPlaying) {
+            this.audio.pause();
+            this.isPlaying = false;
+        }
+        
+        // 更新UI
+        this.updateTrackInfo(track);
+        this.updateActiveTrack();
+        
+        // 更新专辑封面
+        this.updateAlbumCover(track.id);
+        
+        // 设置音频源（不立即播放）
+        this.audio.src = `/api/tracks/${track.id}/stream`;
+        this.audio.currentTime = 0;
+        
+        // 重置歌词状态
+        this.currentLyricIndex = -1;
+        
+        try {
+            // 预加载歌词
+            await this.loadLyrics(track.id);
+            
+            // 确保歌词已渲染完成
+            await this.ensureLyricsRendered();
+            
+            // 延迟歌词更新以避免初始滚动
+            setTimeout(() => {
+                if (this.lyrics.length > 0) {
+                    // 手动更新歌词，确保第一行高亮但不滚动
+                    this.updateLyrics(true); // 传递参数表示这是初始化
+                }
+            }, 100);
+            
+        } catch (error) {
+            console.error('加载歌词失败:', error);
+            this.lyrics = [];
+            this.renderLyrics();
+        }
+        
+        // 开始播放
+        this.audio.play();
+        this.isPlaying = true;
+        this.updatePlayButton();
+        this.updateCDRotation();
+    }
+    
+    // 更新CD旋转状态
+    updateCDRotation() {
+        const coverImage = document.getElementById('cover-image');
+        if (this.isPlaying) {
+            coverImage.classList.add('rotate');
+        } else {
+            coverImage.classList.remove('rotate');
+        }
     }
     
     playPrevious() {
@@ -552,10 +603,13 @@ class MusicPlayer {
         });
         document.querySelector(`[data-id="${playlistId}"]`).classList.add('active');
         
-        if (playlistId === 'all') {
+        // 获取当前播放列表
+        const playlist = this.playlists.find(pl => pl.id === playlistId);
+        
+        if (playlist && playlist.type === 'all') {
             // 显示所有音乐
             this.currentPlaylist = null;
-            this.elements.currentListTitle.textContent = '音乐列表';
+            this.elements.currentListTitle.textContent = playlist.name;
             await this.loadTracks();
         } else {
             // 显示播放列表中的音乐
@@ -624,6 +678,122 @@ class MusicPlayer {
         }
     }
     
+    // 音效控制方法
+    toggleEqualizerMenu() {
+        this.elements.equalizerMenu.classList.toggle('show');
+    }
+    
+    selectEffect(effect) {
+        // 更新当前音效
+        this.currentEffect = effect;
+        
+        // 更新按钮文本
+        this.elements.equalizerBtn.textContent = effect;
+        
+        // 更新菜单项激活状态
+        document.querySelectorAll('.equalizer-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.effect === effect) {
+                item.classList.add('active');
+            }
+        });
+        
+        // 关闭菜单
+        this.elements.equalizerMenu.classList.remove('show');
+        
+        // 应用音效（这里只是一个示例，实际应用需要根据音效类型设置不同的音频参数）
+        this.applyEffect(effect);
+    }
+    
+    applyEffect(effect) {
+        // 这里需要根据不同的音效类型设置不同的音频参数
+        // 由于浏览器原生Audio API不支持复杂音效，实际应用中可能需要使用Web Audio API
+        // 这里只是一个示例，演示如何根据音效类型调整音频参数
+        console.log(`应用音效: ${effect}`);
+        
+        // 示例：根据不同音效调整音量曲线或其他参数
+        // 实际应用中需要使用Web Audio API实现复杂音效
+        switch (effect) {
+            case '超重低音':
+                // 示例：增加低频增益
+                break;
+            case '纯净人声':
+                // 示例：提升中频，降低高低频
+                break;
+            case 'HiFi现场':
+                // 示例：平衡各频段，提升清晰度
+                break;
+            case '黑胶唱片':
+                // 示例：模拟黑胶唱片的温暖音色
+                break;
+            case '演唱会':
+                // 示例：增加混响效果
+                break;
+            case '3D丽音':
+                // 示例：模拟3D环绕效果
+                break;
+            case '空间音效':
+                // 示例：模拟空间环绕效果
+                break;
+            case '3D旋转':
+                // 示例：模拟3D旋转音效
+                break;
+            case '声乐古风':
+                // 示例：调整音色适合古风音乐
+                break;
+            case '5.1全景':
+                // 示例：模拟5.1全景声效果
+                break;
+            case '虚拟环境':
+                // 示例：模拟不同环境的音效
+                break;
+            case '原声':
+            default:
+                // 示例：恢复原始音效
+                break;
+        }
+    }
+    
+    // 主题切换方法
+    toggleTheme() {
+        // 切换主题状态
+        this.isDarkTheme = !this.isDarkTheme;
+        
+        // 更新body类名
+        const body = document.body;
+        if (this.isDarkTheme) {
+            body.classList.remove('light-theme');
+            this.elements.themeToggleBtn.textContent = '🌙';
+        } else {
+            body.classList.add('light-theme');
+            this.elements.themeToggleBtn.textContent = '☀️';
+        }
+        
+        // 保存主题设置到localStorage
+        this.saveThemeSetting();
+    }
+    
+    // 保存主题设置
+    saveThemeSetting() {
+        const settings = JSON.parse(localStorage.getItem('tingting-music-settings') || '{}');
+        settings.theme = this.isDarkTheme ? 'dark' : 'light';
+        localStorage.setItem('tingting-music-settings', JSON.stringify(settings));
+    }
+    
+    // 加载主题设置
+    loadThemeSetting() {
+        const settings = JSON.parse(localStorage.getItem('tingting-music-settings') || '{}');
+        if (settings.theme === 'light') {
+            this.isDarkTheme = false;
+            document.body.classList.add('light-theme');
+            this.elements.themeToggleBtn.textContent = '☀️';
+        } else {
+            this.isDarkTheme = true;
+            document.body.classList.remove('light-theme');
+            this.elements.themeToggleBtn.textContent = '🌙';
+        }
+    }
+    
     // 歌词相关方法
     async loadLyrics(trackId) {
         try {
@@ -631,16 +801,25 @@ class MusicPlayer {
             if (response.ok) {
                 const lyricData = await response.json();
                 this.lyrics = this.parseLyrics(lyricData.content);
-                this.renderLyrics();
             } else {
                 this.lyrics = [];
-                this.renderLyrics();
             }
         } catch (error) {
             console.error('加载歌词失败:', error);
             this.lyrics = [];
-            this.renderLyrics();
         }
+    }
+    
+    async ensureLyricsRendered() {
+        // 确保歌词渲染完成
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.renderLyrics();
+                    resolve();
+                });
+            });
+        });
     }
     
     parseLyrics(lyricText) {
@@ -674,14 +853,29 @@ class MusicPlayer {
             return;
         }
         
+        // 强制清空歌词容器内容
+        this.elements.lyrics.innerHTML = '';
+        
+        // 渲染歌词内容
         const html = this.lyrics.map((lyric, index) => {
             return `<div class="lyric-line" data-index="${index}">${lyric.text}</div>`;
         }).join('');
         
-        this.elements.lyrics.innerHTML = html;
+        // 延迟执行，确保DOM更新后再设置滚动位置
+        requestAnimationFrame(() => {
+            this.elements.lyrics.innerHTML = html;
+            requestAnimationFrame(() => {
+                // 强制设置滚动位置到顶部
+                this.elements.lyrics.scrollTop = 0;
+                // 清除所有current-line类
+                document.querySelectorAll('.lyric-line').forEach(line => {
+                    line.classList.remove('current-line');
+                });
+            });
+        });
     }
     
-    updateLyrics() {
+    updateLyrics(isInitialLoad = false) {
         if (this.lyrics.length === 0) return;
         
         const currentTime = this.audio.currentTime;
@@ -709,8 +903,20 @@ class MusicPlayer {
             const currentLine = document.querySelector(`.lyric-line[data-index="${currentIndex}"]`);
             if (currentLine) {
                 currentLine.classList.add('current-line');
-                // 滚动到当前歌词行
-                currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // 仅在非初始化且用户没有手动滚动时才自动滚动
+                if (!isInitialLoad) {
+                    const lyricsContainer = this.elements.lyrics;
+                    const isAtTop = lyricsContainer.scrollTop < 50;
+                    const isNearCurrentLine = Math.abs(currentLine.offsetTop - lyricsContainer.scrollTop) < lyricsContainer.clientHeight;
+                    
+                    if (isAtTop || !isNearCurrentLine) {
+                        // 延迟滚动，确保在DOM更新后再执行
+                        setTimeout(() => {
+                            currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                    }
+                }
             }
             
             this.currentLyricIndex = currentIndex;

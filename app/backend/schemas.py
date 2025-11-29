@@ -67,6 +67,7 @@ class Lyric(LyricBase):
 class PlaylistBase(BaseModel):
     name: str
     type: str = "custom"
+    music_dir: Optional[str] = None
 
 class PlaylistCreate(PlaylistBase):
     pass

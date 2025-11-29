@@ -5,7 +5,7 @@ from . import models, schemas, crud
 
 # Supported audio file extensions
 SUPPORTED_EXTENSIONS = [
-    '.mp3', '.flac', '.wav', '.aac', '.ogg', '.alac', '.aiff'
+    '.mp3', '.flac', '.wav', '.aac', '.ogg', '.alac', '.aiff', '.ape'
 ]
 
 # Supported lyric file extensions
@@ -15,8 +15,12 @@ def scan_music_directory(db: Session, music_dir: str):
     """Scan music directory and add tracks to database"""
     print(f"Scanning music directory: {music_dir}")
     
+    # Get all existing tracks from database
+    existing_tracks = db.query(models.Track).all()
+    existing_track_paths = {track.file_path: track for track in existing_tracks}
+    
     # First process all audio files to create track entries
-    audio_files = []
+    found_files = []
     lyric_files = []
     
     for root, dirs, files in os.walk(music_dir):
@@ -26,9 +30,17 @@ def scan_music_directory(db: Session, music_dir: str):
             
             if ext in SUPPORTED_EXTENSIONS:
                 process_audio_file(db, file_path, ext)
-                audio_files.append(file_path)
+                found_files.append(file_path)
+                # Remove from existing tracks dictionary if found
+                if file_path in existing_track_paths:
+                    del existing_track_paths[file_path]
             elif ext in LYRIC_EXTENSIONS:
                 lyric_files.append(file_path)
+    
+    # Delete tracks that no longer exist in the filesystem
+    for track_path, track in existing_track_paths.items():
+        print(f"Removing deleted track: {track.title}")
+        crud.delete_track(db, track.id)
     
     # Then process all lyric files and associate with tracks
     for lyric_file in lyric_files:
@@ -44,9 +56,21 @@ def process_audio_file(db: Session, file_path: str, ext: str):
         return
     
     try:
+        # Check if this is a lyric file (shouldn't happen, but just in case)
+        if ext in LYRIC_EXTENSIONS:
+            return
+        
         # Use mutagen to read metadata
         audio = File(file_path)
         if not audio:
+            return
+        
+        # Check if this is actually an audio file by trying to get duration
+        try:
+            # Try to access audio.info to check if it's an audio file
+            if not hasattr(audio, 'info'):
+                return
+        except:
             return
         
         # Extract metadata
@@ -167,6 +191,13 @@ def extract_metadata(audio, file_path: str, ext: str) -> dict:
                 if tag in audio.tags:
                     metadata['album'] = audio.tags[tag]
                     break
+    
+    elif ext == '.ape':
+        # APEv2 tags
+        if hasattr(audio, 'tags') and audio.tags:
+            metadata['title'] = audio.tags.get('title', [metadata['title']])[0]
+            metadata['artist'] = audio.tags.get('artist', [''])[0]
+            metadata['album'] = audio.tags.get('album', [''])[0]
     
     return metadata
 

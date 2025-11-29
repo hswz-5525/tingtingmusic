@@ -34,6 +34,19 @@ def startup_event():
         from . import crud
         crud.create_default_playlists(db)
         
+        # Create "全部音乐" playlist if it doesn't exist
+        all_music_playlist = db.query(models.Playlist).filter(
+            models.Playlist.name == "全部音乐"
+        ).first()
+        if not all_music_playlist:
+            all_music_playlist = models.Playlist(
+                name="全部音乐",
+                type="all",
+                music_dir=settings.music_dir
+            )
+            db.add(all_music_playlist)
+            db.commit()
+        
         # Scan music directory in background
         scan_music_directory(db, settings.music_dir)
     finally:
@@ -51,6 +64,11 @@ def get_db():
 @app.get("/")
 def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+# Settings page endpoint
+@app.get("/settings")
+def read_settings(request: Request):
+    return templates.TemplateResponse("settings.html", {"request": request, "current_folder": settings.music_dir, "current_lyric_folder": None})
 
 # API endpoints
 @app.post("/api/scan")
@@ -94,7 +112,8 @@ def stream_track(track_id: int, db: Session = Depends(get_db)):
         ".aac": "audio/aac",
         ".ogg": "audio/ogg",
         ".alac": "audio/alac",
-        ".aiff": "audio/aiff"
+        ".aiff": "audio/aiff",
+        ".ape": "audio/ape"
     }
     
     ext = os.path.splitext(db_track.file_path)[1].lower()
@@ -127,6 +146,20 @@ def read_playlist(playlist_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/playlists", response_model=schemas.Playlist)
 def create_playlist(playlist: schemas.PlaylistCreate, db: Session = Depends(get_db)):
+    import os
+    from .config import settings
+    
+    # 设置播放列表类型为custom
+    playlist.type = "custom"
+    
+    # 在musics文件夹下创建对应名称的文件夹
+    playlist_dir = os.path.join(settings.music_dir, playlist.name)
+    if not os.path.exists(playlist_dir):
+        os.makedirs(playlist_dir)
+    
+    # 设置播放列表的music_dir为创建的文件夹路径
+    playlist.music_dir = playlist_dir
+    
     return crud.create_playlist(db=db, playlist=playlist)
 
 @app.put("/api/playlists/{playlist_id}", response_model=schemas.Playlist)

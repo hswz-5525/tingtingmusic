@@ -48,6 +48,7 @@ class Playlist(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     type = Column(String, default="custom")  # custom, favorite, recent
+    music_dir = Column(String, nullable=True)  # 音乐文件夹路径
     
     tracks = relationship("PlaylistTrack", back_populates="playlist")
 

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 - 听听音乐</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>听听音乐</h1>
+            </div>
+            <div class="header-right">
+                <a href="/" class="nav-btn">返回主页</a>
+            </div>
+        </header>
+        
+        <main class="settings-main">
+            <div class="settings-container">
+                <h2>设置</h2>
+                
+
+                
+                <div class="settings-section">
+                    <h3>播放设置</h3>
+                    <div class="setting-item">
+                        <label for="default-play-mode">默认播放模式</label>
+                        <select id="default-play-mode">
+                            <option value="0">顺序播放</option>
+                            <option value="1">单曲循环</option>
+                            <option value="2">列表循环</option>
+                            <option value="3">随机播放</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="default-volume">默认音量</label>
+                        <input type="range" id="default-volume" min="0" max="100" value="70">
+                        <span class="setting-value" id="volume-value">70%</span>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>显示设置</h3>
+                    <div class="setting-item">
+                        <label for="show-artist">显示艺术家</label>
+                        <select id="show-artist">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="show-album">显示专辑</label>
+                        <select id="show-album">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="show-filename">显示文件名</label>
+                        <select id="show-filename">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="show-bitrate">显示编码率</label>
+                        <select id="show-bitrate">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="show-sample-rate">显示采样率</label>
+                        <select id="show-sample-rate">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="show-file-type">显示文件格式</label>
+                        <select id="show-file-type">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>歌词设置</h3>
+                    <div class="setting-item">
+                        <label for="lyric-folder">歌词文件夹</label>
+                        <div class="current-folder">
+                            <span id="current-lyric-folder">{{ current_lyric_folder or '使用音乐文件同目录' }}</span>
+                        </div>
+                        <div class="folder-actions">
+                            <input type="text" id="new-lyric-folder" placeholder="输入歌词文件夹路径，留空则使用音乐文件同目录">
+                            <button id="save-lyric-folder-btn" class="primary-btn">保存</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>歌单音乐文件夹</h3>
+                    <div id="playlists-folders-container">
+                        <!-- 歌单音乐文件夹设置将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>软件说明</h3>
+                    <div class="setting-item">
+                        <p>听听音乐是一款简单易用的NAS音乐播放器，支持Web界面和API访问，可在手机和电脑上使用。</p>
+                        <p>主要功能：</p>
+                        <ul>
+                            <li>支持多种音频格式播放：MP3、FLAC、WAV、AAC、OGG、ALAC、AIFF、APE等</li>
+                            <li>自动扫描音乐文件夹</li>
+                            <li>支持播放列表管理</li>
+                            <li>支持歌词显示</li>
+                            <li>支持多种播放模式</li>
+                            <li>支持设置默认音量和播放模式</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>联系方式</h3>
+                    <div class="setting-item">
+                        <p>公众号：红薯丸子</p>
+                        <p>微信号：hhkj5525</p>
+                    </div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button id="save-settings-btn" class="primary-btn">保存设置</button>
+                    <button id="cancel-btn" class="secondary-btn">取消</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // 加载设置
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('tingting-music-settings') || '{}');
+            
+            // 应用设置
+            if (settings.defaultPlayMode !== undefined) {
+                document.getElementById('default-play-mode').value = settings.defaultPlayMode;
+            }
+            
+            if (settings.defaultVolume !== undefined) {
+                const volume = settings.defaultVolume;
+                document.getElementById('default-volume').value = volume;
+                document.getElementById('volume-value').textContent = volume + '%';
+            }
+            
+            if (settings.showArtist !== undefined) {
+                document.getElementById('show-artist').value = settings.showArtist;
+            }
+            
+            if (settings.showAlbum !== undefined) {
+                document.getElementById('show-album').value = settings.showAlbum;
+            }
+            
+            if (settings.showFilename !== undefined) {
+                document.getElementById('show-filename').value = settings.showFilename;
+            }
+            
+            if (settings.showBitrate !== undefined) {
+                document.getElementById('show-bitrate').value = settings.showBitrate;
+            }
+            
+            if (settings.showSampleRate !== undefined) {
+                document.getElementById('show-sample-rate').value = settings.showSampleRate;
+            }
+            
+            if (settings.showFileType !== undefined) {
+                document.getElementById('show-file-type').value = settings.showFileType;
+            }
+            
+            // 加载歌词文件夹设置
+            if (settings.lyricFolder !== undefined) {
+                document.getElementById('new-lyric-folder').value = settings.lyricFolder;
+            }
+        }
+        
+        // 保存设置
+        function saveSettings() {
+            const settings = {
+                defaultPlayMode: parseInt(document.getElementById('default-play-mode').value),
+                defaultVolume: parseInt(document.getElementById('default-volume').value),
+                showArtist: document.getElementById('show-artist').value,
+                showAlbum: document.getElementById('show-album').value,
+                showFilename: document.getElementById('show-filename').value,
+                showBitrate: document.getElementById('show-bitrate').value,
+                showSampleRate: document.getElementById('show-sample-rate').value,
+                showFileType: document.getElementById('show-file-type').value,
+                lyricFolder: document.getElementById('new-lyric-folder').value
+            };
+            
+            localStorage.setItem('tingting-music-settings', JSON.stringify(settings));
+            alert('设置已保存');
+        }
+        
+        // 保存歌词文件夹设置
+        document.getElementById('save-lyric-folder-btn').addEventListener('click', () => {
+            saveSettings();
+        });
+        
+        // 加载播放列表
+        async function loadPlaylists() {
+            try {
+                const response = await fetch('/api/playlists');
+                const playlists = await response.json();
+                renderPlaylistsFolders(playlists);
+            } catch (error) {
+                console.error('加载播放列表失败:', error);
+            }
+        }
+        
+        // 渲染歌单音乐文件夹设置
+        function renderPlaylistsFolders(playlists) {
+            const container = document.getElementById('playlists-folders-container');
+            container.innerHTML = '';
+            
+            playlists.forEach(playlist => {
+                // 跳过"最新播放"歌单
+                if (playlist.name === '最近播放') {
+                    return;
+                }
+                
+                const playlistItem = document.createElement('div');
+                playlistItem.className = 'setting-item';
+                playlistItem.dataset.playlistId = playlist.id;
+                
+                playlistItem.innerHTML = `
+                    <label for="playlist-folder-${playlist.id}">${playlist.name} - 音乐文件夹</label>
+                    <div class="current-folder">
+                        <span id="current-playlist-folder-${playlist.id}">${playlist.music_dir || '未设置'}</span>
+                    </div>
+                    <div class="folder-actions">
+                        <input type="text" id="playlist-folder-${playlist.id}" placeholder="输入音乐文件夹路径" value="${playlist.music_dir || ''}">
+                        <button class="primary-btn" onclick="savePlaylistFolder(${playlist.id})">保存</button>
+                    </div>
+                `;
+                
+                container.appendChild(playlistItem);
+            });
+        }
+        
+        // 保存歌单音乐文件夹设置
+        async function savePlaylistFolder(playlistId) {
+            const folderPath = document.getElementById(`playlist-folder-${playlistId}`).value;
+            
+            try {
+                const response = await fetch(`/api/playlists/${playlistId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ music_dir: folderPath || null })
+                });
+                
+                if (response.ok) {
+                    const playlist = await response.json();
+                    document.getElementById(`current-playlist-folder-${playlistId}`).textContent = playlist.music_dir || '未设置';
+                    alert('设置已保存');
+                }
+            } catch (error) {
+                console.error('保存歌单文件夹失败:', error);
+                alert('保存失败');
+            }
+        }
+        
+        // 绑定事件
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            loadPlaylists();
+            
+            // 音量滑块事件
+            document.getElementById('default-volume').addEventListener('input', (e) => {
+                document.getElementById('volume-value').textContent = e.target.value + '%';
+            });
+            
+            // 保存设置按钮
+            document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+            
+            // 取消按钮
+            document.getElementById('cancel-btn').addEventListener('click', () => {
+                window.location.href = '/';
+            });
+        });
+    </script>
+</body>
+</html>

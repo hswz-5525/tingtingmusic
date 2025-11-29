@@ -75,7 +75,11 @@ def get_playlist_with_tracks(db: Session, playlist_id: int):
     return playlist
 
 def create_playlist(db: Session, playlist: schemas.PlaylistCreate):
-    db_playlist = models.Playlist(name=playlist.name, type=playlist.type)
+    db_playlist = models.Playlist(
+        name=playlist.name, 
+        type=playlist.type,
+        music_dir=playlist.music_dir
+    )
     db.add(db_playlist)
     db.commit()
     db.refresh(db_playlist)
@@ -83,6 +87,8 @@ def create_playlist(db: Session, playlist: schemas.PlaylistCreate):
 
 def create_default_playlists(db: Session):
     """Create default playlists if they don't exist"""
+    from .config import settings
+    
     default_playlists = [
         {"name": "我的收藏", "type": "favorite"},
         {"name": "最近播放", "type": "recent"}
@@ -96,11 +102,24 @@ def create_default_playlists(db: Session):
         if not existing:
             playlist = schemas.PlaylistCreate(**pl)
             create_playlist(db, playlist)
+    
+    # 确保"全部音乐"对应的默认播放列表有正确的音乐文件夹
+    all_music_playlist = db.query(models.Playlist).filter(
+        models.Playlist.name == "全部音乐",
+        models.Playlist.type == "all"
+    ).first()
+    
+    if all_music_playlist:
+        # 更新"全部音乐"的音乐文件夹为默认路径
+        all_music_playlist.music_dir = settings.music_dir
+        db.commit()
+        db.refresh(all_music_playlist)
 
 def update_playlist(db: Session, playlist_id: int, playlist: schemas.PlaylistCreate):
     db_playlist = get_playlist(db, playlist_id)
     if db_playlist:
         db_playlist.name = playlist.name
+        db_playlist.music_dir = playlist.music_dir
         db.commit()
         db.refresh(db_playlist)
     return db_playlist

@@ -29,9 +29,13 @@ for i in range(36):
 
 # 绘制文字
 try:
-    font = ImageFont.truetype('arial.ttf', 24)
+    # 尝试使用系统中的中文字体
+    font = ImageFont.truetype('simhei.ttf', 24)
 except:
-    font = ImageFont.load_default()
+    try:
+        font = ImageFont.truetype('msyh.ttc', 24)
+    except:
+        font = ImageFont.load_default()
 
 draw.text((150, 140), "听听音乐", fill='#ffffff', font=font, anchor='mm')
 
