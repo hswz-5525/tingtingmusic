@@ -29,7 +29,16 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(grep 'version:' config.yaml | cut -d'"' -f2 || echo "latest")
+          # 尝试从git标签获取版本号
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=$(echo "${GITHUB_REF}" | sed 's/refs\/tags\///')
+          # 尝试从README.md获取版本号
+          elif grep -q 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md; then
+            VERSION=$(grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' README.md | head -1)
+          # 默认使用latest
+          else
+            VERSION="latest"
+          fi
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
@@ -39,24 +48,11 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/wanzitools:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/wanzitools:${{ env.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/ttmusic:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ttmusic:${{ env.VERSION }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wanzitools:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wanzitools:buildcache,mode=max
-
-      - name: Build and push Go service
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: Dockerfile.go
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/wanzitools-go:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/wanzitools-go:${{ env.VERSION }}
-          platforms: linux/amd64
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wanzitools-go:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/wanzitools-go:buildcache,mode=max
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ttmusic:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/ttmusic:buildcache,mode=max
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
