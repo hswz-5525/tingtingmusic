@@ -65,8 +65,8 @@
    ```
 
 7. 访问应用
-   - Web界面：http://localhost:18003
-   - API文档：http://localhost:18003/docs
+   - Web界面：http://localhost:18000
+   - API文档：http://localhost:18000/docs
 
 ### 使用Docker运行
 
@@ -77,7 +77,7 @@
 
 2. 运行Docker容器
    ```bash
-   docker run -d -p 18003:18003 -v /path/to/music:/app/musics tingtingmusic
+   docker run -d -p 18000:18000 -v /path/to/music:/app/musics tingtingmusic
    ```
 
 ## 使用说明
@@ -139,7 +139,7 @@ tingtingmusic/
 |-------|-------|------|
 | MUSIC_DIR | ./musics | 音乐目录 |
 | HOST | 0.0.0.0 | 服务器地址 |
-| PORT | 18003 | 服务器端口 |
+| PORT | 18000 | 服务器端口 |
 | DATABASE_URL | sqlite:///./music.db | 数据库连接URL |
 
 ### 配置文件
@@ -150,8 +150,8 @@ tingtingmusic/
 
 ### 基本信息
 
-- API地址：http://localhost:18003/api
-- API文档：http://localhost:18003/docs
+- API地址：http://localhost:18000/api
+- API文档：http://localhost:18000/docs
 - 支持CORS，可用于第三方应用开发
 
 ### 主要API
