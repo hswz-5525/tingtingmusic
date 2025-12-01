@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>听听音乐</title>
+    <link rel="stylesheet" href="/static/styles-mobile.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>听听音乐</h1>
+            <div class="header-actions">
+                <button id="theme-toggle-btn" class="settings-btn" title="切换主题">🌙</button>
+                <a href="/mobile/settings" class="settings-btn" title="设置">⚙️</a>
+            </div>
+        </header>
+        
+        <!-- 播放列表 -->
+        <aside class="sidebar">
+            <div class="playlist-header">
+                <h2>播放列表</h2>
+                <button id="add-playlist-btn" class="add-btn">+ 新建</button>
+            </div>
+            <div class="playlists-list" id="playlists-list">
+                <!-- 播放列表将通过JavaScript动态生成 -->
+            </div>
+        </aside>
+        
+        <!-- 播放器区域 -->
+        <section class="player-section">
+            <div class="album-cover">
+                <img id="cover-image" src="/static/default-cover.png" alt="专辑封面">
+            </div>
+            
+            <div class="track-info">
+                <h2 id="track-title">未播放</h2>
+                <p id="track-artist">-</p>
+            </div>
+            
+            <!-- 歌词显示 -->
+            <div class="lyrics-section">
+                <div id="lyrics" class="lyrics"></div>
+            </div>
+            
+            <!-- 进度条 -->
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+                <div class="time-info">
+                    <span id="current-time">0:00</span>
+                    <span id="total-time">0:00</span>
+                </div>
+            </div>
+            
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button id="prev-btn" class="control-btn" title="上一曲">⏮️</button>
+                <button id="play-btn" class="control-btn play-btn" title="播放/暂停">▶️</button>
+                <button id="next-btn" class="control-btn" title="下一曲">⏭️</button>
+                <button id="play-mode-btn" class="control-btn" title="切换播放模式">
+                    <span id="play-mode-icon">🔄</span>
+                </button>
+            </div>
+            
+            <!-- 音量控制 -->
+            <div class="volume-control">
+                <span>🔊</span>
+                <input type="range" id="volume" min="0" max="1" step="0.01" value="0.7">
+            </div>
+            
+            <!-- 音效控制 -->
+            <div class="equalizer-control">
+                <button id="equalizer-btn" title="音效切换">原声</button>
+                <div class="equalizer-menu" id="equalizer-menu">
+                    <div class="equalizer-item active" data-effect="原声">原声</div>
+                    <div class="equalizer-item" data-effect="纯净人声">纯净人声</div>
+                    <div class="equalizer-item" data-effect="HiFi现场">HiFi现场</div>
+                    <div class="equalizer-item" data-effect="超重低音">超重低音</div>
+                    <div class="equalizer-item" data-effect="黑胶唱片">黑胶唱片</div>
+                    <div class="equalizer-item" data-effect="演唱会">演唱会</div>
+                    <div class="equalizer-item" data-effect="3D丽音">3D丽音</div>
+                    <div class="equalizer-item" data-effect="空间音效">空间音效</div>
+                    <div class="equalizer-item" data-effect="3D旋转">3D旋转</div>
+                    <div class="equalizer-item" data-effect="声乐古风">声乐古风</div>
+                    <div class="equalizer-item" data-effect="5.1全景">5.1全景</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 音乐列表 -->
+        <section class="tracks-section">
+            <h2 id="current-list-title">全部音乐</h2>
+            <div class="tracks-list" id="tracks-list">
+                <!-- 音乐列表将通过JavaScript动态生成 -->
+            </div>
+        </section>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>

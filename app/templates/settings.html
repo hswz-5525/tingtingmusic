@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>设置 - 听听音乐</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <!-- 根据屏幕尺寸加载不同的CSS文件 -->
+    <link rel="stylesheet" href="/static/styles-desktop.css" media="(min-width: 768px)">
+    <link rel="stylesheet" href="/static/styles-mobile.css" media="(max-width: 767px)">
 </head>
 <body>
     <div class="container">
@@ -112,6 +114,7 @@
                     <h3>软件说明</h3>
                     <div class="setting-item">
                         <p>听听音乐是一款简单易用的NAS音乐播放器，支持Web界面和API访问，可在手机和电脑上使用。</p>
+                        <p>版本号：v1.0.0</p>
                         <p>主要功能：</p>
                         <ul>
                             <li>支持多种音频格式播放：MP3、FLAC、WAV、AAC、OGG、ALAC、AIFF、APE等</li>

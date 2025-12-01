@@ -33,9 +33,9 @@ for /f "tokens=*" %%a in ("%IP_ADDRESS%") do set IP_ADDRESS=%%a
 
 REM 启动服务 
 echo 正在启动服务... 
-echo 服务将在 http://127.0.0.1:8000 上运行 
-echo 手机调试地址：http://%IP_ADDRESS%:8000 
+echo 服务将在 http://127.0.0.1:18000 上运行 
+echo 手机调试地址：http://%IP_ADDRESS%:18000 
 echo 按 Ctrl+C 停止服务 
-uvicorn app.backend.main:app --reload --host 0.0.0.0
+uvicorn app.backend.main:app --reload --host 0.0.0.0 --port 18000
 
 pause

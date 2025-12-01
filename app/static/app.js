@@ -30,6 +30,7 @@ class MusicPlayer {
             playlistsList: document.getElementById('playlists-list'),
             addPlaylistBtn: document.getElementById('add-playlist-btn'),
             lyrics: document.getElementById('lyrics'),
+            lyricsSection: document.querySelector('.lyrics-section'),
             tracksList: document.getElementById('tracks-list'),
             currentListTitle: document.getElementById('current-list-title'),
             equalizerBtn: document.getElementById('equalizer-btn'),
@@ -46,6 +47,32 @@ class MusicPlayer {
         // 主题设置
         this.isDarkTheme = true;
         
+        // 记录歌词区域滚动位置
+        this.lastScrollPosition = 0;
+        
+        // 记录用户是否正在滚动
+        this.isUserScrolling = false;
+        
+        // 记录滚动停止的计时器
+        this.scrollStopTimer = null;
+        
+        // 分离界面浏览状态和歌词滚动状态
+        // isBrowsing: 用于界面浏览控制（如歌曲列表点击后的状态）
+        // isLyricsScrollEnabled: 用于控制歌词自动滚动
+        this.isBrowsing = false;
+        this.isLyricsScrollEnabled = true;
+        
+        // 添加歌词滚动状态切换方法
+        this.toggleLyricsScroll = () => {
+            this.isLyricsScrollEnabled = !this.isLyricsScrollEnabled;
+            console.log('歌词自动滚动已', this.isLyricsScrollEnabled ? '启用' : '禁用');
+            
+            // 更新UI提示（如果需要的话）
+            if (this.elements.lyrics) {
+                this.elements.lyrics.style.opacity = this.isLyricsScrollEnabled ? '1' : '0.7';
+            }
+        };
+        
         this.init();
     }
     
@@ -61,6 +88,9 @@ class MusicPlayer {
         
         // 绑定事件
         this.bindEvents();
+        
+        // 初始化歌词滚动监听
+        this.initScrollListener();
         
         // 设置默认音量
         this.audio.volume = this.elements.volume.value;
@@ -186,7 +216,12 @@ class MusicPlayer {
             `;
             
             // 绑定点击事件
-            trackItem.addEventListener('click', () => this.playTrack(index));
+            trackItem.addEventListener('click', () => {
+                // 标记开始浏览状态
+                this.isBrowsing = true;
+                this.playTrack(index);
+                // 不自动清除浏览状态，由用户主动操作或页面切换来清除
+            });
             
             this.elements.tracksList.appendChild(trackItem);
         });
@@ -308,7 +343,15 @@ class MusicPlayer {
             }
             
             trackItem.textContent = displayName;
-            trackItem.addEventListener('click', () => this.playTrack(index));
+            trackItem.addEventListener('click', () => {
+                // 标记开始浏览状态
+                this.isBrowsing = true;
+                this.playTrack(index);
+                // 延迟清除浏览状态，给用户足够时间浏览
+                setTimeout(() => {
+                    this.isBrowsing = false;
+                }, 3000);
+            });
             container.appendChild(trackItem);
         });
     }
@@ -334,12 +377,55 @@ class MusicPlayer {
         // 播放模式按钮
         this.elements.playModeBtn.addEventListener('click', () => this.togglePlayMode());
         
-        // 进度条点击
-        this.elements.progress.addEventListener('click', (e) => this.seek(e));
+        // 进度条点击和触摸支持
+        // 使用箭头函数确保this指向正确
+        this.elements.progress.addEventListener('click', (e) => {
+            console.log('click事件触发');
+            this.seek(e);
+        });
         
-        // 音量控制
+        // 添加触摸事件支持，适配手机端
+        this.elements.progress.addEventListener('touchstart', (e) => {
+            console.log('touchstart事件触发');
+            this.seek(e);
+        });
+        
+        // 添加触摸移动事件支持，允许在进度条上滑动
+        this.elements.progress.addEventListener('touchmove', (e) => {
+            console.log('touchmove事件触发');
+            this.seek(e);
+        });
+        
+        // 添加触摸结束事件支持
+        this.elements.progress.addEventListener('touchend', (e) => {
+            // 阻止默认行为
+            e.preventDefault();
+        });
+        
+        // 音量控制 - 添加input和change事件支持，确保手机端能正常滑动
         this.elements.volume.addEventListener('input', (e) => {
             this.audio.volume = e.target.value;
+        });
+        
+        // 添加change事件，确保在某些浏览器中能正常工作
+        this.elements.volume.addEventListener('change', (e) => {
+            this.audio.volume = e.target.value;
+        });
+        
+        // 添加触摸事件支持，确保在所有手机浏览器中都能正常工作
+        this.elements.volume.addEventListener('touchstart', (e) => {
+            // 阻止默认行为，确保滑块能正常响应
+            e.preventDefault();
+        });
+        
+        this.elements.volume.addEventListener('touchmove', (e) => {
+            // 阻止默认行为，确保滑块能正常响应
+            e.preventDefault();
+        });
+        
+        this.elements.volume.addEventListener('touchend', (e) => {
+            // 阻止默认行为，确保滑块能正常响应
+            e.preventDefault();
         });
         
         // 音频事件
@@ -417,46 +503,67 @@ class MusicPlayer {
         this.updatePlayButton();
     }
     
-    async playTrack(index) {
+    async playTrack(index, keepPosition = false) {
         if (index < 0 || index >= this.tracks.length) return;
-        
+
         this.currentTrackIndex = index;
         const track = this.tracks[index];
-        
+
+        // 保存当前播放位置（如果要求保持）
+        const savedTime = keepPosition ? this.audio.currentTime : 0;
+
         // 暂停当前播放
         if (this.isPlaying) {
             this.audio.pause();
             this.isPlaying = false;
         }
-        
+
         // 更新UI
         this.updateTrackInfo(track);
         this.updateActiveTrack();
-        
+
         // 更新专辑封面
         this.updateAlbumCover(track.id);
-        
-        // 设置音频源（不立即播放）
+
+        // 设置音频源 - 注意：这可能会触发音频重新加载
         this.audio.src = `/api/tracks/${track.id}/stream`;
-        this.audio.currentTime = 0;
         
-        // 重置歌词状态
-        this.currentLyricIndex = -1;
+        // 恢复播放位置（如果要求保持）
+        if (keepPosition && savedTime > 0) {
+            this.audio.addEventListener('loadedmetadata', () => {
+                // 延迟恢复位置，确保音频完全加载
+                setTimeout(() => {
+                    this.audio.currentTime = savedTime;
+                    console.log(`🔄 恢复播放位置: ${savedTime.toFixed(2)}秒`);
+                }, 100);
+            }, { once: true });
+        }
         
         try {
-            // 预加载歌词
+            // 预加载歌词（同步操作）
             await this.loadLyrics(track.id);
             
-            // 确保歌词已渲染完成
+            // 确保歌词已渲染完成（同步操作）
             await this.ensureLyricsRendered();
             
-            // 延迟歌词更新以避免初始滚动
-            setTimeout(() => {
-                if (this.lyrics.length > 0) {
-                    // 手动更新歌词，确保第一行高亮但不滚动
-                    this.updateLyrics(true); // 传递参数表示这是初始化
+            // 立即初始化歌词状态，防止任何意外的滚动
+            if (this.lyrics && this.lyrics.length > 0) {
+                this.currentLyricIndex = -1;
+                
+                // 立即重置歌词滚动位置到顶部
+                if (this.elements.lyrics) {
+                    this.elements.lyrics.scrollTop = 0;
                 }
-            }, 100);
+                
+                // 强制重置歌词显示状态，清除可能存在的样式类
+                const allLyricLines = document.querySelectorAll('.lyric-line');
+                allLyricLines.forEach(line => {
+                    line.classList.remove('current-line', 'current');
+                });
+                
+                // 立即更新歌词状态到第0行，但不要滚动
+                this.updateLyricsOnTrackChange();
+            }
             
         } catch (error) {
             console.error('加载歌词失败:', error);
@@ -469,6 +576,88 @@ class MusicPlayer {
         this.isPlaying = true;
         this.updatePlayButton();
         this.updateCDRotation();
+        
+        // 延迟清除浏览状态，让用户有时间浏览列表，但不阻止歌词滚动
+        setTimeout(() => {
+            this.isBrowsing = false;
+        }, 1000); // 1秒后清除浏览状态
+    }
+    
+    // 专门处理歌曲切换时的歌词初始化，确保当前歌词行显示在视窗内
+    updateLyricsOnTrackChange() {
+        if (!this.lyrics || this.lyrics.length === 0) return;
+
+        // 找到当前时间应该显示的歌词行
+        const currentTime = this.audio.currentTime;
+        let targetIndex = -1;
+
+        // 找到当前时间对应的歌词行
+        for (let i = 0; i < this.lyrics.length; i++) {
+            if (this.lyrics[i].time > currentTime) {
+                targetIndex = i - 1;
+                break;
+            }
+        }
+
+        if (targetIndex === -1 && this.lyrics.length > 0) {
+            targetIndex = this.lyrics.length - 1;
+        }
+
+        // 设置目标歌词行为当前行
+        const targetLine = document.querySelector(`.lyric-line[data-index="${targetIndex}"]`);
+        if (targetLine) {
+            // 清除所有歌词行的当前状态
+            const allLyricLines = document.querySelectorAll('.lyric-line');
+            allLyricLines.forEach(line => {
+                line.classList.remove('current-line', 'current');
+            });
+
+            // 设置目标歌词行为当前行
+            targetLine.classList.add('current-line');
+            targetLine.classList.add('current');
+
+            // 触发滚动，让当前歌词行显示在视窗内，修正滑动条初始位置
+            if (this.isLyricsScrollEnabled && !this.isUserScrolling) {
+                // 统一使用lyrics-section作为滚动容器，与电脑端保持完全相同的逻辑
+                const lyricsContainer = this.elements.lyricsSection;
+                if (lyricsContainer) {
+                    // 使用更兼容的滚动计算方法，避免getBoundingClientRect()在手机端的兼容性问题
+                    // 通过当前歌词行索引直接计算滚动位置
+                    const lyricLines = document.querySelectorAll('.lyric-line');
+                    if (lyricLines.length === 0) return;
+
+                    // 计算目标行之前的总高度
+                    let heightBeforeTargetLine = 0;
+                    for (let i = 0; i < targetIndex; i++) {
+                        if (lyricLines[i]) {
+                            heightBeforeTargetLine += lyricLines[i].offsetHeight;
+                        }
+                    }
+
+                    // 获取目标行高度
+                    const lineHeight = targetLine.offsetHeight;
+
+                    // 获取容器高度
+                    const containerHeight = lyricsContainer.clientHeight;
+
+                    // 计算目标滚动位置：使当前行在容器中居中
+                    const scrollTarget = heightBeforeTargetLine + lineHeight / 2 - containerHeight / 2;
+
+                    // 确保scrollTarget在有效范围内
+                    const maxScroll = Math.max(0, lyricsContainer.scrollHeight - containerHeight);
+                    const finalScrollTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
+
+                    // 强制滚动到目标位置，确保当前歌词行显示在视窗内
+                    lyricsContainer.scrollTop = finalScrollTarget;
+
+                    // 保存当前滚动位置
+                    this.lastScrollPosition = lyricsContainer.scrollTop;
+                }
+            }
+        }
+
+        // 更新内部索引
+        this.currentLyricIndex = targetIndex;
     }
     
     // 更新CD旋转状态
@@ -541,11 +730,118 @@ class MusicPlayer {
     }
     
     seek(e) {
-        const progressWidth = this.elements.progress.clientWidth;
-        const clickX = e.offsetX;
-        const duration = this.audio.duration;
+        // 阻止默认行为，防止页面滚动
+        e.preventDefault();
+        e.stopPropagation();
         
-        this.audio.currentTime = (clickX / progressWidth) * duration;
+        console.log('🔍 seek方法被触发');
+        
+        // 确保this指向正确
+        if (!this.audio) {
+            console.error('this.audio未定义');
+            return;
+        }
+        
+        const progressElement = this.elements.progress;
+        if (!progressElement) {
+            console.error('progressElement未定义');
+            return;
+        }
+        
+        const rect = progressElement.getBoundingClientRect();
+        let clickX;
+        
+        // 处理不同类型的事件，统一使用getBoundingClientRect()计算
+        if (e.type === 'click') {
+            // 鼠标点击事件
+            clickX = e.clientX - rect.left;
+            console.log(`🖱️ 点击事件: clientX=${e.clientX}, rect.left=${rect.left}, clickX=${clickX}`);
+        } else if (e.type === 'touchstart' || e.type === 'touchmove') {
+            // 触摸事件
+            const touch = e.touches[0];
+            clickX = touch.clientX - rect.left;
+            console.log(`👆 触摸事件: clientX=${touch.clientX}, rect.left=${rect.left}, clickX=${clickX}`);
+        } else {
+            // 其他情况
+            clickX = e.clientX - rect.left;
+            console.log(`❓ 其他事件: clientX=${e.clientX}, rect.left=${rect.left}, clickX=${clickX}`);
+        }
+        
+        const progressWidth = rect.width;
+        // 确保clickX在有效范围内
+        clickX = Math.max(0, Math.min(clickX, progressWidth));
+        
+        const duration = this.audio.duration;
+        console.log(`📊 进度条信息: 宽度=${progressWidth}, 歌曲时长=${duration}秒`);
+        
+        if (duration && duration > 0 && progressWidth > 0) {
+            // 计算新的播放时间 - 使用最简单的逻辑
+            const percent = clickX / progressWidth;
+            const newTime = duration * percent;
+            
+            console.log(`🎯 定位计算: 点击比例=${percent.toFixed(3)}, 目标时间=${newTime.toFixed(2)}秒`);
+            
+            // 保存目标时间，用于重试
+            const savedTargetTime = newTime;
+            
+            // 尝试设置播放时间
+            const attemptSeek = () => {
+                try {
+                    this.audio.currentTime = savedTargetTime;
+                    const actualTime = this.audio.currentTime;
+                    console.log(`✅ 设置播放时间: 目标=${savedTargetTime.toFixed(2)}秒, 实际=${actualTime.toFixed(2)}秒`);
+                    
+                    // 检查是否设置成功
+                    if (Math.abs(actualTime - savedTargetTime) < 0.1) {
+                        console.log('🎯 定位成功！');
+                        
+                        // 确保播放状态与UI同步
+                        if (this.isPlaying && this.audio.paused) {
+                            console.log('▶️ 恢复播放');
+                            this.audio.play().catch(error => {
+                                console.error('❌ 播放失败:', error);
+                            });
+                        }
+                    } else {
+                        console.log(`⚠️ 定位偏差较大，可能需要重试`);
+                        // 延迟重试一次
+                        setTimeout(() => {
+                            if (this.audio.currentTime < 0.1) {
+                                console.log('🔄 重试定位...');
+                                this.audio.currentTime = savedTargetTime;
+                            }
+                        }, 100);
+                    }
+                } catch (error) {
+                    console.error('❌ 设置播放时间失败:', error);
+                }
+            };
+            
+            // 立即尝试定位
+            attemptSeek();
+            
+            // 监听loadedmetadata事件，如果音频重新加载，重新定位
+            const onLoadedMetadata = () => {
+                console.log('📡 检测到loadedmetadata事件，重新定位...');
+                setTimeout(() => {
+                    if (this.audio.currentTime < 0.1) {
+                        console.log(`🔄 音频加载完成，重新定位到${savedTargetTime.toFixed(2)}秒`);
+                        this.audio.currentTime = savedTargetTime;
+                    }
+                }, 50);
+            };
+            
+            // 添加一次性事件监听器
+            this.audio.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+            
+            // 延迟清理事件监听器（防止内存泄漏）
+            setTimeout(() => {
+                this.audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+            }, 1000);
+            
+        } else {
+            console.log(`❌ 无法定位: duration=${duration}, progressWidth=${progressWidth}`);
+        }
     }
     
     updateTrackInfo(track) {
@@ -567,11 +863,10 @@ class MusicPlayer {
     }
     
     updatePlayButton() {
-        const playIcon = this.elements.playBtn.querySelector('span');
         if (this.isPlaying) {
-            playIcon.textContent = '⏸️';
+            this.elements.playBtn.innerHTML = '⏸️';
         } else {
-            playIcon.textContent = '▶️';
+            this.elements.playBtn.innerHTML = '▶️';
         }
     }
     
@@ -797,16 +1092,24 @@ class MusicPlayer {
     // 歌词相关方法
     async loadLyrics(trackId) {
         try {
+            // 默认歌词文本
+            let lyricsText = '[00:00.00]暂无歌词';
+            
+            // 尝试获取歌词
             const response = await fetch(`/api/tracks/${trackId}/lyric`);
             if (response.ok) {
                 const lyricData = await response.json();
-                this.lyrics = this.parseLyrics(lyricData.content);
-            } else {
-                this.lyrics = [];
+                if (lyricData && lyricData.content) {
+                    lyricsText = lyricData.content;
+                }
             }
+            
+            // 解析歌词文本
+            this.lyrics = this.parseLyrics(lyricsText);
         } catch (error) {
             console.error('加载歌词失败:', error);
-            this.lyrics = [];
+            // 即使获取失败，也添加默认歌词
+            this.lyrics = [{ time: 0, text: '暂无歌词' }];
         }
     }
     
@@ -848,39 +1151,42 @@ class MusicPlayer {
     }
     
     renderLyrics() {
-        if (this.lyrics.length === 0) {
-            this.elements.lyrics.innerHTML = '<p>暂无歌词</p>';
-            return;
-        }
+        // 优化渲染逻辑，减少闪烁
+        if (!this.elements.lyrics) return;
         
-        // 强制清空歌词容器内容
-        this.elements.lyrics.innerHTML = '';
+        const html = this.lyrics.length === 0 
+            ? '<div class="lyric-line" data-index="0">暂无歌词</div>'
+            : this.lyrics.map((lyric, index) => {
+                return `<div class="lyric-line" data-index="${index}">${lyric.text}</div>`;
+            }).join('');
         
-        // 渲染歌词内容
-        const html = this.lyrics.map((lyric, index) => {
-            return `<div class="lyric-line" data-index="${index}">${lyric.text}</div>`;
-        }).join('');
+        // 一次性更新HTML，避免频繁DOM操作
+        this.elements.lyrics.innerHTML = html;
         
-        // 延迟执行，确保DOM更新后再设置滚动位置
+        // 确保歌词内容更新后立即重置滚动位置和清除样式
+        this.elements.lyrics.scrollTop = 0;
+        this.currentLyricIndex = -1; // 重置当前歌词索引
+        
+        // 清除所有歌词行的高亮
+        document.querySelectorAll('.lyric-line').forEach(line => {
+            line.classList.remove('current-line', 'current');
+        });
+        
+        // 保存当前歌词HTML，用于后续比较
+        this.lastLyricsHtml = this.elements.lyrics.innerHTML;
+        
+        // 歌词渲染完成后，立即更新歌词显示，确保当前行在视图中
         requestAnimationFrame(() => {
-            this.elements.lyrics.innerHTML = html;
-            requestAnimationFrame(() => {
-                // 强制设置滚动位置到顶部
-                this.elements.lyrics.scrollTop = 0;
-                // 清除所有current-line类
-                document.querySelectorAll('.lyric-line').forEach(line => {
-                    line.classList.remove('current-line');
-                });
-            });
+            this.updateLyrics(true);
         });
     }
     
     updateLyrics(isInitialLoad = false) {
         if (this.lyrics.length === 0) return;
-        
+
         const currentTime = this.audio.currentTime;
         let currentIndex = -1;
-        
+
         // 找到当前时间对应的歌词行
         for (let i = 0; i < this.lyrics.length; i++) {
             if (this.lyrics[i].time > currentTime) {
@@ -888,39 +1194,124 @@ class MusicPlayer {
                 break;
             }
         }
-        
+
         if (currentIndex === -1 && this.lyrics.length > 0) {
             currentIndex = this.lyrics.length - 1;
         }
-        
-        if (currentIndex !== this.currentLyricIndex) {
-            // 移除所有current-line类
-            document.querySelectorAll('.lyric-line').forEach(line => {
-                line.classList.remove('current-line');
-            });
-            
-            // 添加current-line类到当前歌词行
-            const currentLine = document.querySelector(`.lyric-line[data-index="${currentIndex}"]`);
-            if (currentLine) {
-                currentLine.classList.add('current-line');
-                
-                // 仅在非初始化且用户没有手动滚动时才自动滚动
-                if (!isInitialLoad) {
-                    const lyricsContainer = this.elements.lyrics;
-                    const isAtTop = lyricsContainer.scrollTop < 50;
-                    const isNearCurrentLine = Math.abs(currentLine.offsetTop - lyricsContainer.scrollTop) < lyricsContainer.clientHeight;
-                    
-                    if (isAtTop || !isNearCurrentLine) {
-                        // 延迟滚动，确保在DOM更新后再执行
-                        setTimeout(() => {
-                            currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 100);
-                    }
+
+        // 确保索引在有效范围内
+        currentIndex = Math.max(0, Math.min(currentIndex, this.lyrics.length - 1));
+
+        // 获取当前歌词行元素
+        const currentLine = document.querySelector(`.lyric-line[data-index="${currentIndex}"]`);
+        if (!currentLine) return;
+
+        // 清除所有歌词行的高亮，确保只有当前行被高亮
+        document.querySelectorAll('.lyric-line').forEach(line => {
+            line.classList.remove('current-line', 'current');
+        });
+
+        // 添加高亮类
+        currentLine.classList.add('current-line');
+        currentLine.classList.add('current');
+
+        // 仅在歌词滚动启用且用户没有手动滚动时才自动滚动
+        if (this.isLyricsScrollEnabled && !this.isUserScrolling) {
+            // 重新获取元素，确保DOM已经更新
+            const updatedCurrentLine = document.querySelector(`.lyric-line[data-index="${currentIndex}"]`);
+            if (!updatedCurrentLine) return;
+
+            // 统一使用lyrics-section作为滚动容器，与电脑端保持完全相同的逻辑
+            const lyricsContainer = this.elements.lyricsSection;
+            if (!lyricsContainer) return;
+
+            // 使用更兼容的滚动计算方法，避免getBoundingClientRect()在手机端的兼容性问题
+            // 方法1：通过当前歌词行索引直接计算滚动位置
+            const allLyricLines = document.querySelectorAll('.lyric-line');
+            if (allLyricLines.length === 0) return;
+
+            // 计算当前行之前的总高度
+            let heightBeforeCurrentLine = 0;
+            for (let i = 0; i < currentIndex; i++) {
+                if (allLyricLines[i]) {
+                    heightBeforeCurrentLine += allLyricLines[i].offsetHeight;
                 }
             }
-            
-            this.currentLyricIndex = currentIndex;
+
+            // 获取当前行高度
+            const lineHeight = updatedCurrentLine.offsetHeight;
+
+            // 获取容器高度
+            const containerHeight = lyricsContainer.clientHeight;
+
+            // 计算目标滚动位置：使当前行在容器中居中
+            const scrollTarget = heightBeforeCurrentLine + lineHeight / 2 - containerHeight / 2;
+
+            // 确保scrollTarget在有效范围内
+            const maxScroll = Math.max(0, lyricsContainer.scrollHeight - containerHeight);
+            const finalScrollTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
+
+            // 强制滚动到目标位置，确保当前歌词行显示在视窗内
+            lyricsContainer.scrollTop = finalScrollTarget;
+
+            // 保存当前滚动位置
+            this.lastScrollPosition = lyricsContainer.scrollTop;
         }
+
+        // 更新当前歌词索引
+        this.currentLyricIndex = currentIndex;
+    }
+    
+    // 记录歌词区域滚动位置
+    initScrollListener() {
+        // 为所有可能的歌词容器添加滚动监听
+        const scrollContainers = [];
+        if (this.elements.lyricsSection) scrollContainers.push(this.elements.lyricsSection);
+        if (this.elements.lyrics) scrollContainers.push(this.elements.lyrics);
+        
+        if (scrollContainers.length === 0) return;
+        
+        // 滚动事件处理函数
+        const handleScroll = (container) => {
+            return () => {
+                // 更新滚动位置
+                this.lastScrollPosition = container.scrollTop;
+                
+                // 记录用户滚动状态
+                this.isUserScrolling = true;
+                
+                // 清除之前的计时器
+                if (this.scrollStopTimer) {
+                    clearTimeout(this.scrollStopTimer);
+                }
+                
+                // 设置一个计时器，在滚动停止后1.5秒重置滚动状态
+                this.scrollStopTimer = setTimeout(() => {
+                    this.isUserScrolling = false;
+                }, 1500);
+            };
+        };
+        
+        // 点击事件处理函数
+        const handleClick = () => {
+            // 清除浏览状态，允许歌词自动滚动
+            this.isBrowsing = false;
+        };
+        
+        // 为每个滚动容器添加事件监听
+        scrollContainers.forEach(container => {
+            // 使用被动事件监听器，提高滚动性能
+            container.addEventListener('scroll', handleScroll(container), { passive: true });
+            
+            // 添加歌词区域点击监听器，清除浏览状态
+            container.addEventListener('click', handleClick);
+            
+            // 初始化滚动位置
+            this.lastScrollPosition = container.scrollTop;
+        });
+        
+        // 初始化滚动状态
+        this.isUserScrolling = false;
     }
 }
 

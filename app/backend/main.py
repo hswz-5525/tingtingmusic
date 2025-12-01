@@ -60,15 +60,35 @@ def get_db():
     finally:
         db.close()
 
-# Root endpoint - serve the main HTML page
+# Helper function to detect if request is from a mobile device
+def is_mobile_device(request: Request) -> bool:
+    user_agent = request.headers.get("user-agent", "").lower()
+    mobile_keywords = ["mobile", "android", "iphone", "ipad", "ipod", "blackberry", "windows phone"]
+    return any(keyword in user_agent for keyword in mobile_keywords)
+
+# Root endpoint - serve the main HTML page based on device type
 @app.get("/")
 def read_root(request: Request):
+    if is_mobile_device(request):
+        return templates.TemplateResponse("mobile.html", {"request": request})
     return templates.TemplateResponse("index.html", {"request": request})
+
+# Mobile root endpoint
+@app.get("/mobile")
+def read_mobile_root(request: Request):
+    return templates.TemplateResponse("mobile.html", {"request": request})
 
 # Settings page endpoint
 @app.get("/settings")
 def read_settings(request: Request):
+    if is_mobile_device(request):
+        return templates.TemplateResponse("mobile_settings.html", {"request": request, "current_folder": settings.music_dir, "current_lyric_folder": None})
     return templates.TemplateResponse("settings.html", {"request": request, "current_folder": settings.music_dir, "current_lyric_folder": None})
+
+# Mobile settings page endpoint
+@app.get("/mobile/settings")
+def read_mobile_settings(request: Request):
+    return templates.TemplateResponse("mobile_settings.html", {"request": request, "current_folder": settings.music_dir, "current_lyric_folder": None})
 
 # API endpoints
 @app.post("/api/scan")

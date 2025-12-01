@@ -47,10 +47,21 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* 防止横向滚动 */
+html, body {
+    width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* 头部样式 */
@@ -119,6 +130,25 @@ body {
     top: 20px; /* 与播放器区域保持一致 */
     z-index: 50;
     overflow: hidden; /* 禁止播放列表区域滚动 */
+}
+
+/* 二级菜单 - 音乐列表 */
+.playlist-tracks {
+    margin-left: 20px;
+    margin-top: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    border-left: 2px solid rgba(29, 185, 84, 0.3);
+    padding-left: 15px;
+}
+
+.playlist-track-item {
+    padding: 8px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 3px;
+    font-size: 0.9rem;
 }
 
 /* 播放列表项 */
@@ -388,6 +418,9 @@ body {
     background-color: var(--hover-bg);
     border-radius: 10px;
     /* 确保歌词区域在播放界面内滚动，不影响整体布局 */
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
 }
 
 .lyrics {
@@ -882,59 +915,374 @@ body {
     .player-section {
         height: fit-content;
         position: sticky;
-        top: 20px;
+        top: 100px;
     }
 }
 
 @media (max-width: 767px) {
+    /* 全局容器 */
     .container {
         padding: 10px;
+        width: 100vw;
+        overflow-x: hidden;
+        margin: 0;
     }
     
+    /* 头部 */
     .header {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 15px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background-color: var(--bg-primary);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        box-sizing: border-box;
     }
     
     .header h1 {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
+        margin: 0;
     }
     
-    /* 移动端布局调整为垂直排列 */
+    .header-actions {
+        margin: 0;
+        display: flex;
+        gap: 10px;
+    }
+    
+    /* 主布局 */
     .main-layout {
         grid-template-columns: 1fr;
+        gap: 10px;
+        width: 100%;
+        padding: 0;
+        box-sizing: border-box;
     }
     
+    /* 播放列表 */
     .sidebar {
         position: static;
+        height: auto;
+        max-height: 200px;
+        overflow-y: auto;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+    }
+    
+    .playlist-section {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .playlist-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .playlist-header h2 {
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    
+    .add-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .playlists-list {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 二级菜单 - 音乐列表 */
+    .playlist-tracks {
+        margin-left: 10px;
+        margin-top: 5px;
+        max-height: 150px;
+        overflow-y: auto;
+        border-left: 2px solid rgba(29, 185, 84, 0.3);
+        padding-left: 10px;
+    }
+    
+    .playlist-track-item {
+        padding: 6px 8px;
+        font-size: 0.85rem;
+    }
+    
+    /* 主内容 */
+    .main-content {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 播放器区域 */
+    .player-section {
+        position: static;
+        padding: 15px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* CD封面和歌词区域 - 手机端垂直排列 */
+    .cover-lyrics-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 左侧：CD封面和歌曲信息 */
+    .cover-info-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        width: 100%;
+        box-sizing: border-box;
     }
     
     .album-cover img {
-        width: 150px;
-        height: 150px;
+        width: 120px;
+        height: 120px;
+    }
+    
+    .track-info {
+        width: 100%;
+        box-sizing: border-box;
     }
     
     .track-info h2 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+        margin: 10px 0 5px 0;
+        width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .track-info p {
-        font-size: 1rem;
+        font-size: 0.9rem;
+        margin: 0;
+        width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* 右侧：歌词 */
+    .lyrics-container {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .lyrics-section {
+        height: 150px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .lyrics {
+        font-size: 0.9rem;
+        line-height: 1.8;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 进度条、控制按钮和音量 */
+    .player-controls-section {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 进度条 */
+    .progress-bar {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .progress {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 控制按钮调整 */
+    .controls-container {
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+        box-sizing: border-box;
     }
     
     .controls {
-        gap: 15px;
+        gap: 10px;
+        width: 100%;
+        justify-content: center;
+        box-sizing: border-box;
     }
     
     .control-btn {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+        padding: 8px;
     }
     
     .control-btn.play-btn {
-        font-size: 2rem;
+        font-size: 1.8rem;
+    }
+    
+    /* 音量和音效控制调整 - 放在控制键下方 */
+    .volume-control {
+        width: 100%;
+        justify-content: center;
+        margin-top: 10px;
+        box-sizing: border-box;
+    }
+    
+    .volume-control input[type="range"] {
+        width: 120px;
+    }
+    
+    .equalizer-control {
+        margin-top: 10px;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 音效控制调整 */
+    #equalizer-btn {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+    
+    #equalizer-menu {
+        width: calc(100% - 40px);
+        max-width: 250px;
+        right: 50%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+    }
+    
+    /* 歌曲列表 */
+    .tracks-section {
+        padding: 15px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .tracks-section h2 {
+        font-size: 1.2rem;
+        margin: 0 0 15px 0;
     }
     
     .tracks-list {
         max-height: 300px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* 歌曲列表项 */
+    .track-item {
+        padding: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .track-item:last-child {
+        border-bottom: none;
+    }
+    
+    .track-item .track-number {
+        width: 25px;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+    
+    .track-item .track-details {
+        flex: 1;
+        overflow: hidden;
+    }
+    
+    .track-item .track-details h3 {
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 0;
+    }
+    
+    .track-item .track-details p {
+        font-size: 0.8rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 2px 0 0 0;
+    }
+    
+    .track-item .track-details .track-info {
+        font-size: 0.7rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 2px 0 0 0;
+    }
+    
+    .track-item .track-duration {
+        white-space: nowrap;
+        font-size: 0.8rem;
+        margin: 0;
+        flex-shrink: 0;
+    }
+    
+    /* 设置页面调整 */
+    .settings-main {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .settings-container {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0 10px;
+    }
+    
+    .settings-section {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .setting-item {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .current-folder {
+        width: 100%;
+        box-sizing: border-box;
+        word-break: break-all;
+    }
+    
+    .folder-actions {
+        width: 100%;
+        box-sizing: border-box;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .folder-actions input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
     }
 }
