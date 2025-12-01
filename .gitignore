@@ -51,6 +51,7 @@ musics/*
 backup/
 backup/*
 
+# 运行脚本
 run claude.bat
 setup.bat
 start.bat
