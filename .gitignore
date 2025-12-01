@@ -50,3 +50,7 @@ musics/*
 # 备份文件
 backup/
 backup/*
+
+run claude.bat
+setup.bat
+start.bat
