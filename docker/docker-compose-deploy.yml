@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  tingting-music:
+    image: hswz/ttmusic:latest
+    container_name: tingtingmusic
+    ports:
+      - "18000:18000"
+    volumes:
+      - ./music:/app/musics
+      - ./data:/app/data
+    environment:
+      - MUSIC_DIR=./musics
+      - DATABASE_URL=sqlite:///./data/music.db
+    restart: unless-stopped
+    pull_policy: always
