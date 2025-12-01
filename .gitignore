@@ -45,4 +45,8 @@ test/
 generate-cover.html
 
 # 音乐文件
-musics/
+musics/*
+
+# 备份文件
+backup/
+backup/*
