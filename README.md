@@ -204,6 +204,8 @@ MIT License
 
 - GitHub: https://github.com/hswz-5525/tingtingmusic
 - 邮箱: your-email@example.com
+- 微信公众号：红薯丸子
+- 微信：hhkj5525
 
 ## 致谢
 
