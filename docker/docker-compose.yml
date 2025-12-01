@@ -3,9 +3,9 @@ version: '3.8'
 services:
   tingting-music:
     build: ..
-    container_name: tingting-music
+    container_name: tingtingmusic
     ports:
-      - "8000:8000"
+      - "18000:18000"
     volumes:
       - ./music:/app/musics
       - ./data:/app/data

@@ -4,7 +4,7 @@ from typing import Optional
 class Settings(BaseSettings):
     music_dir: str = "./musics"
     host: str = "0.0.0.0"
-    port: int = 18003
+    port: int = 18000
     database_url: str = "sqlite:///./music.db"
     
     class Config:
